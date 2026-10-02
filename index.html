@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Dance Mix">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="Trim and join songs and videos into one seamless track for a dance performance. Works on your phone; your files never leave it.">
+<title>Dance Mix</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="bar">
+      <button id="undoBtn" class="icon-btn off" aria-label="Undo" data-icon="undo"></button>
+      <span class="bar-space"></span>
+      <button id="settingsBtn" class="icon-btn" aria-label="Settings" data-icon="settings"></button>
+      <button id="addBtn" class="icon-btn" aria-label="Add to the mix" data-icon="plus"></button>
+      <button id="exportBtn" class="pill"><span data-icon="share"></span>Export</button>
+    </div>
+    <button id="mixesBtn" class="title-btn" aria-label="Your mixes">
+      <span id="mixName" class="mix-name">My mix</span><span class="chev" data-icon="chevron"></span>
+      <span id="saveState" class="save-state"></span>
+    </button>
+  </header>
+  <button id="meter" class="meter" aria-label="Mix length and time limit"></button>
+  <main id="list" class="list"></main>
+  <div id="toast" class="toast" hidden></div>
+  <footer id="player" class="player">
+    <div id="mixScrub" class="scrub" aria-label="Position in the mix">
+      <div id="segs" class="segs"></div>
+      <div id="mixHead" class="head"></div>
+    </div>
+    <div class="times"><span id="mixPos">0:00.0</span><span class="times-label">Full mix</span><span id="mixTotal">0:00</span></div>
+    <div class="transport">
+      <button id="mixBack" class="skip" aria-label="Back 5 seconds" data-icon="back5"></button>
+      <button id="mixPlay" class="play-big" aria-label="Play the mix" data-icon="play"></button>
+      <button id="mixFwd" class="skip" aria-label="Forward 5 seconds" data-icon="fwd5"></button>
+    </div>
+  </footer>
+</div>
+
+<!-- Edit one clip -->
+<section id="editor" class="screen" hidden>
+  <header class="scr-top">
+    <button id="edDone" class="txt-btn">Done</button>
+    <div class="scr-title"><div id="edTitle">Clip</div><div id="edFile" class="sub"></div></div>
+    <button id="edDup" class="icon-btn" aria-label="Duplicate clip" data-icon="copy"></button>
+    <button id="edDel" class="icon-btn danger" aria-label="Delete clip" data-icon="trash"></button>
+  </header>
+  <div class="scr-body ed-body">
+    <div id="edVideoBox" class="ed-video"><video id="edVideo" playsinline muted preload="auto"></video></div>
+    <div class="ed-info"><span id="edHead">Playhead 0:00.0</span><span id="edSel">Selected 0:00.0</span></div>
+    <canvas id="edWave" class="ed-wave" aria-label="Waveform. Drag the handles to trim; drag elsewhere to move the playhead; pinch to zoom."></canvas>
+    <canvas id="edOver" class="ed-over" aria-label="Whole file. Drag to move the zoomed view."></canvas>
+    <div class="zoom-row">
+      <button id="edZoomOut" class="chip-btn" aria-label="Zoom out" data-icon="zoomOut"></button>
+      <button id="edZoomIn" class="chip-btn" aria-label="Zoom in" data-icon="zoomIn"></button>
+      <button id="edFit" class="chip-btn wide-chip">Whole file</button>
+      <button id="edSelZoom" class="chip-btn wide-chip">Selection</button>
+    </div>
+    <div class="trim">
+      <div class="trim-label">Start</div>
+      <div class="trim-row">
+        <button class="nudge" data-nudge="start" data-dir="-1" aria-label="Start 0.1 seconds earlier">−0.1</button>
+        <output id="edStart" class="trim-val">0:00.0</output>
+        <button class="nudge" data-nudge="start" data-dir="1" aria-label="Start 0.1 seconds later">+0.1</button>
+        <button class="set-btn" data-set="start">Set here</button>
+      </div>
+    </div>
+    <div class="trim">
+      <div class="trim-label">End</div>
+      <div class="trim-row">
+        <button class="nudge" data-nudge="end" data-dir="-1" aria-label="End 0.1 seconds earlier">−0.1</button>
+        <output id="edEnd" class="trim-val">0:00.0</output>
+        <button class="nudge" data-nudge="end" data-dir="1" aria-label="End 0.1 seconds later">+0.1</button>
+        <button class="set-btn" data-set="end">Set here</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <div class="ctl-head"><span><span data-icon="volume"></span> Level</span><output id="edLevelVal">Normal</output></div>
+      <input id="edLevel" type="range" min="-12" max="12" step="1" value="0" aria-label="Make this clip louder or quieter">
+      <div class="range-ends"><span>Quieter</span><span>Louder</span></div>
+      <div class="ctl-foot"><span id="edAuto" class="hint"></span><button id="edLevelReset" class="link-btn">Reset</button></div>
+    </div>
+    <div class="ctl two">
+      <div>
+        <div class="ctl-head"><span>Fade in</span></div>
+        <div class="stepper small" data-fade="fadeIn"><button data-d="-1" aria-label="Shorter fade in">−</button><output>0 s</output><button data-d="1" aria-label="Longer fade in">+</button></div>
+      </div>
+      <div>
+        <div class="ctl-head"><span>Fade out</span></div>
+        <div class="stepper small" data-fade="fadeOut"><button data-d="-1" aria-label="Shorter fade out">−</button><output>0 s</output><button data-d="1" aria-label="Longer fade out">+</button></div>
+      </div>
+    </div>
+  </div>
+  <footer class="ed-foot">
+    <button id="edToStart" class="skip" aria-label="Playhead to the start of the selection" data-icon="toStart"></button>
+    <button id="edPlay" class="play-big" aria-label="Play" data-icon="play"></button>
+    <button id="edLoop" class="skip toggle" aria-label="Loop the selection" aria-pressed="false" data-icon="repeat"></button>
+  </footer>
+</section>
+
+<!-- Settings -->
+<section id="settings" class="screen" hidden>
+  <header class="scr-top">
+    <span class="scr-spacer"></span>
+    <div class="scr-title"><div>Settings</div></div>
+    <button id="setDone" class="txt-btn">Done</button>
+  </header>
+  <div id="setBody" class="scr-body"></div>
+</section>
+
+<!-- First-launch intro -->
+<section id="intro" class="screen intro" hidden>
+  <header class="intro-top"><button id="introSkip" class="txt-btn">Skip demo</button></header>
+  <div id="introPages" class="intro-pages"></div>
+  <footer class="intro-foot">
+    <div id="introDots" class="dots"></div>
+    <button id="introNext" class="wide primary">Next</button>
+  </footer>
+</section>
+
+<!-- Bottom sheet -->
+<div id="sheetWrap" class="sheet-wrap" hidden>
+  <div id="sheetScrim" class="sheet-scrim"></div>
+  <div class="sheet" role="dialog" aria-modal="true"><div class="sheet-grab"></div><div id="sheetBody"></div></div>
+</div>
+
+<input id="filePick" type="file" accept="audio/*,video/*" multiple hidden>
+<input id="relinkPick" type="file" accept="audio/*,video/*" hidden>
+<script src="vendor/mp4-muxer.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
