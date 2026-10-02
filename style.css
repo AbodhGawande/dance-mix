@@ -138,8 +138,9 @@ h2, h3 { margin: 0; }
 .empty-ic .ic { width: 34px; height: 34px; }
 .empty h2 { color: var(--text); font-size: 22px; margin-bottom: 6px; }
 .empty p { margin: 0 auto 22px; max-width: 320px; }
-.list-foot { display: flex; gap: 10px; margin-top: 14px; }
-.list-foot button { flex: 1; }
+.list-foot { display: flex; gap: 8px; margin-top: 14px; }
+.list-foot button { flex: 1; padding: 0 8px; gap: 6px; }
+.wide.quiet { background: transparent; color: var(--text-2); }
 
 /* ---------- mix player ---------- */
 .player { background: var(--surface); border-top: .5px solid var(--line); padding: 6px 18px calc(env(safe-area-inset-bottom) + 8px); }

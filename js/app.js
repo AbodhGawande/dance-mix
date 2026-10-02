@@ -9,7 +9,7 @@ import { store } from './store.js';
 import { wavBlob, m4aBlob, videoBlob } from './exporter.js';
 import { icon } from './icons.js';
 
-const APP_VERSION = 1;          // keep in step with VERSION in sw.js
+const APP_VERSION = 2;          // keep in step with VERSION in sw.js
 const CARD_HANDLE = 12;         // trim handle width on the list waveforms (px)
 const ED_HANDLE = 16;           // trim handle width in the editor (px)
 const MIN_SPAN = 1.5;           // closest editor zoom: this many seconds across the screen
@@ -17,6 +17,11 @@ const NUDGE = 0.1;
 const FADE_STEPS = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
 const GAP_STEP = 0.5, GAP_MAX = 60;
 const LIMIT_STEP = 5;
+// iPhone greys out every audio file in the Files picker when asked for "audio/*", so each type is named.
+// Asking only for audio also makes it open Files straight away, without the Photos/Camera menu.
+const SONG_TYPES = '.mp3,.m4a,.aac,.wav,.aif,.aiff,.aifc,.caf,.flac,.ogg,.oga,.opus,.wma,.amr,'
+  + 'audio/mpeg,audio/mp3,audio/mp4,audio/x-m4a,audio/aac,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff,audio/flac,audio/ogg';
+const VIDEO_TYPES = 'video/*,.mov,.mp4,.m4v';
 
 const DEFAULTS = {
   xfadeOn: false, xfadeSec: 2,      // fade between clips, for each clip added
@@ -282,8 +287,8 @@ function refreshSource(srcId) {
   }
 }
 
-function pickFiles() {
-  const inp = $('#filePick');
+function pickFiles(kind) {
+  const inp = $(kind === 'video' ? '#videoPick' : '#songPick');
   inp.value = '';
   inp.click();
 }
@@ -631,8 +636,9 @@ function renderList() {
   if (!p.items.length && !S.pending.length) {
     list.innerHTML = `<div class="empty"><div class="empty-ic">${icon('music')}</div><h2>Start your mix</h2>
       <p>Pick songs or videos from your phone. You can use the same file more than once to take different parts.</p>
-      <button class="wide primary" data-act="add-files">${icon('plus')}Add audio or video</button>
-      <button class="wide" data-act="intro">${icon('info')}How it works</button></div>`;
+      <button class="wide primary" data-act="add-songs">${icon('music')}Add songs</button>
+      <button class="wide" data-act="add-videos">${icon('video')}Add videos</button>
+      <button class="wide quiet" data-act="intro">${icon('info')}How it works</button></div>`;
     return;
   }
   const entryOf = new Map(S.plan.entries.map(e => [e.it.id, e]));
@@ -642,7 +648,7 @@ function renderList() {
   p.items.forEach((it, i) => out.push(itemHtml(it, p.items[i - 1], entryOf.get(it.id))));
   for (const pd of S.pending) out.push(`<div class="item"><div class="card"><div class="card-msg"><span class="spinner"></span>Reading “${esc(pd.name)}”…</div></div></div>`);
   if (hasClips) out.push(edgeChip('out'));
-  out.push(`<div class="list-foot"><button class="wide" data-act="add-files">${icon('plus')}Add files</button><button class="wide" data-act="add-gap">${icon('silence')}Add silence</button></div>`);
+  out.push(`<div class="list-foot"><button class="wide" data-act="add-songs">${icon('music')}Songs</button><button class="wide" data-act="add-videos">${icon('video')}Videos</button><button class="wide" data-act="add-gap">${icon('silence')}Silence</button></div>`);
   list.innerHTML = out.join('');
   $$('.item[data-id]', list).forEach(bindItem);
   for (const id of S.cards.keys()) drawCard(id);
@@ -1204,13 +1210,15 @@ function closeSheet(force = false) {
 
 function openAddSheet() {
   openSheet(`<h2>Add to the mix</h2>
-    <button class="opt" data-act="files">${icon('file')}<span><b>Audio or video files</b><span>From Photos or Files. You can pick several at once.</span></span></button>
-    <button class="opt" data-act="gap">${icon('silence')}<span><b>Silence</b><span>A pause between parts, 2 s to start with.</span></span></button>`, root => {
+    <button class="opt" data-act="song">${icon('music')}<span><b>Songs and audio</b><span>MP3, M4A, WAV and more, from iCloud Drive or On My iPhone. Pick several at once.</span></span></button>
+    <button class="opt" data-act="video">${icon('video')}<span><b>Videos</b><span>From Photos, or video files in Files.</span></span></button>
+    <button class="opt" data-act="gap">${icon('silence')}<span><b>Silence</b><span>A pause between parts, 2 s to start with.</span></span></button>
+    <p class="note">Can't see iCloud Drive in the file picker? Tap Browse at the bottom, then the ‹ arrow at the top left.</p>`, root => {
     root.onclick = e => {
       const b = e.target.closest('[data-act]');
       if (!b) return;
       closeSheet();
-      if (b.dataset.act === 'files') pickFiles(); else addGap();
+      if (b.dataset.act === 'gap') addGap(); else pickFiles(b.dataset.act);
     };
   });
 }
@@ -1687,7 +1695,8 @@ function bindMain() {
     if (!b) return;
     const id = b.closest('.item')?.dataset.id;
     switch (b.dataset.act) {
-      case 'add-files': pickFiles(); break;
+      case 'add-songs': pickFiles('song'); break;
+      case 'add-videos': pickFiles('video'); break;
       case 'add-gap': addGap(); break;
       case 'intro': openIntro(); break;
       case 'xfade': openFadeSheet(id); break;
@@ -1709,7 +1718,11 @@ function bindMain() {
   $('#mixBack').onclick = () => seekMix(S.mixPos - 5, true);
   $('#mixFwd').onclick = () => seekMix(S.mixPos + 5, true);
   $('#sheetScrim').onclick = () => closeSheet();
-  $('#filePick').addEventListener('change', e => addFiles([...e.target.files]));
+  $('#songPick').accept = SONG_TYPES;
+  $('#videoPick').accept = VIDEO_TYPES;
+  $('#relinkPick').accept = `${SONG_TYPES},${VIDEO_TYPES}`;
+  $('#songPick').addEventListener('change', e => addFiles([...e.target.files]));
+  $('#videoPick').addEventListener('change', e => addFiles([...e.target.files]));
   $('#relinkPick').addEventListener('change', e => onRelink(e.target.files[0]));
   bindScrub();
   let rt = 0;

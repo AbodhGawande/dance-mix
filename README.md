@@ -13,8 +13,9 @@ A Home Screen web app (PWA): plain HTML/CSS/JS, no build step. Files never leave
    the Home Screen app keeps its own storage and avoids that.
 
 ## What it does
-- **Pick audio or video files** (from Photos or Files, several at once). The same file can be used any number of
-  times, each clip taking a different part (Edit ▸ copy button, or pick the file again).
+- **Add songs** (Files: iCloud Drive, On My iPhone…; opens the Files picker directly) or **add videos** (Photos or
+  Files), several at once. The same file can be used any number of times, each clip taking a different part
+  (Edit ▸ copy button, or pick the file again).
 - **Vertical list of clips**, each with its own waveform (videos show their sound only), green trim handles,
   a play button and its own playhead (tap or drag the waveform). Drag ⋮⋮ to reorder.
 - **Edit screen** per clip: the video itself, a zoomable waveform (pinch, ± buttons, or drag the overview strip),
@@ -42,7 +43,10 @@ A Home Screen web app (PWA): plain HTML/CSS/JS, no build step. Files never leave
 - `sw.js`: offline cache. **Bump `VERSION` (and `APP_VERSION` in app.js) on every deploy.**
 - `tools/make_icons.py`: draws the icons. `tests/`: `npm test`.
 
-## Safari notes (found while testing in WebKit)
+## Safari notes (found while testing in WebKit and the iOS Simulator)
+- The iPhone Files picker greys out **every** audio file (MP3, M4A, WAV) when the input asks for `audio/*`.
+  The Songs input names each type instead (`SONG_TYPES` in app.js); asking only for audio also skips the
+  Photos/Camera menu and opens Files directly. Videos use `video/*` (keeps the Photo Library option).
 - `decodeAudioData` refuses QuickTime `.mov` (the iPhone video format) but reads MP4; the two are the same inside,
   so `relabelQuickTime()` rewrites the `ftyp` brand before decoding.
 - IndexedDB may refuse to store `File` objects (private browsing); `store.putBlob` falls back to raw bytes.
